@@ -28,12 +28,13 @@
 
 #define N_LEDS 169 // 13 x 13 grid
 #define TIME_HEADER  "T"   // Header tag for serial time sync message
-#define BRIGHTNESSDAY 155 // full on
+#define BRIGHTNESSDAY 200 // full on
 #define BRIGHTNESSNIGHT 55 // half on
 
 Adafruit_NeoPixel grid = Adafruit_NeoPixel(N_LEDS, RGBLEDPIN, NEO_GRB + NEO_KHZ800);
 
-int intBrightness = 155; // the brightness of the clock (0 = off and 255 = 100%)
+// a few vars to keep the peace;
+int intBrightness = BRIGHTNESSDAY; // the brightness of the clock (0 = off and 255 = 100%)
 int intTestMode; // set when both buttons are held down
 String strTime = ""; // used to detect if word time has changed
 int intTimeUpdated = 0; // used to tell if we need to turn on the brightness again when words change
@@ -46,12 +47,50 @@ uint32_t colorGreen = grid.Color(0, 255, 0);
 uint32_t colorBlue = grid.Color(0, 0, 255);
 uint32_t colorJGreen = grid.Color(50, 179, 30);
 
+// the words
+int arrJAVELIN[] = {164,147,163,162,148,149,161,150,151,152,158,153,157,156,154,155,-1};
+int arrTHE1[] = {65,66,67,-1};
+int arrAGE[] = {69,70,71,-1};
+int arrNYC[] = {72,73,74,-1};
+int arrAGENCY[] = {69,70,71,72,73,74,-1};
+int arrOF[] = {76,77,-1};
+int arrTHE2[] = {40,41,42,-1};
+int arrTIME[] = {168,167,166,165,-1};
+int arrWE[] = {143,144,-1};
+int arrA[] = {177,-1};
+int arrAT[] = {145,146,-1};
+int arrCUSTOMER[] = {44,45,46,47,48,49,50,51,-1};
+int arrHELLO[] = {56,55,54,53,52,-1};
+int arrIT[] = {142,141,-1};
+int arrIS[] = {139,138,-1};
+int arrQUARTER[] = {119,120,121,122,123,124,125,-1};
+int arrHALF[] = {133,132,131,130,-1};
+int arrPAST[] = {91,92,93,94,-1};
+int arrOCLOCK[] = {5,4,3,2,1,0,-1};
+int arrTO[] = {95,96,-1};
+int arrONE[] = {98,99,100,-1};
+int arrTWO[] = {101,102,103,-1};
+int arrTHREE[] = {90,89,88,87,86,-1};
+int arrFOUR[] = {85,84,83,82,-1};
+int arrMFIVE[] = {109,108,107,106,-1};
+int arrFIVE[] = {81,80,79,78,-1};
+int arrSIX[] = {38,37,36,-1};
+int arrSEVEN[] = {35,34,33,32,31,-1};
+int arrEIGHT[] = {30,29,28,27,26,-1};
+int arrNINE[] = {13,14,15,16,-1};
+int arrTEN[] = {17,18,19,-1};
+int arrMTEN[] = {136,135,134,-1};
+int arrELEVEN[] = {20,21,22,23,24,25,-1};
+int arrTWELVE[] = {12,11,10,9,8,7,-1};
+int arrTWENTY[] = {116,115,114,113,112,111,-1};
+
 void setup() {
   // set up the debuging serial output
   Serial.begin(9600);
 //  while(!Serial); // Needed for Leonardo only
   delay(200);
   setSyncProvider(RTC.get);   // the function to get the time from the RTC
+  setSyncInterval(60); // sync the time every 60 seconds (1 minutes)
   if(timeStatus() != timeSet){
      Serial.println("Unable to sync with the RTC");
      RTC.set(1406278800);   // set the RTC to Jul 25 2014 9:00 am
@@ -67,25 +106,27 @@ void setup() {
   grid.show();
 
   // set the bright ness of the strip
-  intBrightness = BRIGHTNESSDAY;
   grid.setBrightness(intBrightness);
 
-  chase(colorBlack, 0);
-  HELLO_SPELL(colorJGreen);
-  HELLO_SPELL(colorWhite);
+  colorWipe(colorBlack, 0);
+  spellWord(arrHELLO, colorJGreen);
+  delay(1000);
+  spellWord(arrHELLO, colorWhite);
   delay(1000);
   fadeOut(10);
-  chase(colorBlack, 0);
-//  colorWipe(colorBlack, 0);
-  JAVELIN(colorJGreen);
-  fadeIn(10);
+  colorWipe(colorBlack, 0);
+
+//  paintWord(arrJAVELIN, colorJGreen);
+//  fadeIn(50);
+  // set the bright ness of the strip
+  grid.setBrightness(intBrightness);
 
   // flash our cool tag line
   THEAGE();
   THECUSTOMER();
-  fadeOut(10);
-  delay(100);
-  chase(colorBlack, 0);
+  fadeOut(5);
+  delay(50);
+  colorWipe(colorBlack, 0);
   grid.setBrightness(intBrightness);
   
   // initialize the onboard led on pin 13
@@ -104,6 +145,9 @@ void loop(){
   if (Serial.available()) {
     time_t t = processSyncMessage();
     if (t != 0) {
+      Serial.print("Time set via connection to: ");
+      Serial.print(t);
+      Serial.println();
       RTC.set(t);   // set the RTC and the system time to the received value
       setTime(t);          
     }
@@ -150,17 +194,17 @@ void loop(){
 
     // and finaly we display the time (provided we are not in self tes mode
     if(!intTestMode){
-      digitalClockDisplay();
+      displayTime();
     }
   }else{
     colorWipe(colorBlack, 0);
-    ONE(colorRed);
+    paintWord(arrONE, colorRed);
     Serial.println("The time has not been set.  Please run the Time");
     Serial.println("TimeRTCSet example, or DS1307RTC SetTime example.");
     Serial.println();
     delay(4000);
   }
-  delay(100);
+  delay(1000);
 }
 
 void incrementTime(int intSeconds){
@@ -169,8 +213,11 @@ void incrementTime(int intSeconds){
     Serial.print("adding ");
     Serial.print(intSeconds);
     Serial.println(" seconds to RTC");
-    colorWipe(colorBlack, 0);
+//    colorWipe(colorBlack, 0);
     adjustTime(intSeconds);
+    RTC.set(now() + intSeconds);
+    digitalClockDisplay();
+    displayTime();
   }
 }  
 
@@ -180,30 +227,20 @@ void digitalClockDisplay(){
   printDigits(minute());
   printDigits(second());
   Serial.print(" ");
-  Serial.print(day());
-  Serial.print(" ");
-  Serial.print(month());
-  Serial.print(" ");
   Serial.print(year()); 
+  Serial.print("-");
+  Serial.print(month());
+  Serial.print("-");
+  Serial.print(day());
   Serial.println();
-  displayTime();
 }
-
 
 void displayTime(){
   String strCurrentTime; // build the current time
-  if(intTimeUpdated == 1){
-    intTimeUpdated = 0; // reset the value
-//    grid.setBrightness(intBrightness);
-    fadeIn(10);
-//    grid.show();
-  }else{
-    grid.show();
-  }
   //colorWipe(colorBlack, 0);
-  JAVELIN(colorJGreen);
+  paintWord(arrJAVELIN, colorJGreen);
   // Now, turn on the "It is" leds
-  IT(colorWhite);
+  paintWord(arrIT, colorWhite);
   // if the time IS one of the following IS is green
   if((minute()==5)
     |(minute()==10)
@@ -216,605 +253,773 @@ void displayTime(){
     |(minute()==45)
     |(minute()==50)
     |(minute()==55)){
-    IS(colorJGreen);
+    paintWord(arrIS, colorJGreen);
   }else{
-    IS(colorWhite);    
+    paintWord(arrIS, colorWhite);
   }
   // now we display the appropriate minute counter
   if((minute()>4) && (minute()<10)){
     // FIVE MINUTES
     strCurrentTime = "five ";
-    MFIVE(colorWhite);  
+    paintWord(arrMFIVE, colorWhite);
+    paintWord(arrMTEN, colorBlack);
+    paintWord(arrA, colorBlack);
+    paintWord(arrQUARTER, colorBlack);
+    paintWord(arrHALF, colorBlack);
+    paintWord(arrTWENTY, colorBlack);
   } 
   if((minute()>9) && (minute()<15)) { 
     //TEN MINUTES;
     strCurrentTime = "ten ";
-    MTEN(colorWhite); 
+    paintWord(arrMFIVE, colorBlack);
+    paintWord(arrMTEN, colorWhite);
+    paintWord(arrA, colorBlack);
+    paintWord(arrQUARTER, colorBlack);
+    paintWord(arrHALF, colorBlack);
+    paintWord(arrTWENTY, colorBlack);
   }
   if((minute()>14) && (minute()<20)) {
     // QUARTER
     strCurrentTime = "a quarter ";
-    A(colorWhite);
-    QUARTER(colorWhite); 
+    paintWord(arrMFIVE, colorBlack);
+    paintWord(arrMTEN, colorBlack);
+    paintWord(arrA, colorWhite);
+    paintWord(arrQUARTER, colorWhite);
+    paintWord(arrHALF, colorBlack);
+    paintWord(arrTWENTY, colorBlack);
   }
   if((minute()>19) && (minute()<25)) { 
     //TWENTY MINUTES
     strCurrentTime = "twenty ";
-    TWENTY(colorWhite); 
+    paintWord(arrMFIVE, colorBlack);
+    paintWord(arrMTEN, colorBlack);
+    paintWord(arrA, colorBlack);
+    paintWord(arrQUARTER, colorBlack);
+    paintWord(arrHALF, colorBlack);
+    paintWord(arrTWENTY, colorWhite);
   }
   if((minute()>24) && (minute()<30)) { 
     //TWENTY FIVE
     strCurrentTime = "twenty five ";
-    TWENTY(colorWhite);
-    MFIVE(colorWhite);
+    paintWord(arrMFIVE, colorWhite);
+    paintWord(arrMTEN, colorBlack);
+    paintWord(arrA, colorBlack);
+    paintWord(arrQUARTER, colorBlack);
+    paintWord(arrHALF, colorBlack);
+    paintWord(arrTWENTY, colorWhite);
   }  
   if((minute()>29) && (minute()<35)) {
     strCurrentTime = "half ";
-    HALF(colorWhite);
+    paintWord(arrMFIVE, colorBlack);
+    paintWord(arrMTEN, colorBlack);
+    paintWord(arrA, colorBlack);
+    paintWord(arrQUARTER, colorBlack);
+    paintWord(arrHALF, colorWhite);
+    paintWord(arrTWENTY, colorBlack);
   }
   if((minute()>34) && (minute()<40)) { 
     //TWENTY FIVE
     strCurrentTime = "twenty five ";
-    TWENTY(colorWhite);
-    MFIVE(colorWhite);
+    paintWord(arrMFIVE, colorWhite);
+    paintWord(arrMTEN, colorBlack);
+    paintWord(arrA, colorBlack);
+    paintWord(arrQUARTER, colorBlack);
+    paintWord(arrHALF, colorBlack);
+    paintWord(arrTWENTY, colorWhite);
+
   }  
   if((minute()>39) && (minute()<45)) {
     strCurrentTime = "twenty ";
-    TWENTY(colorWhite);
+    paintWord(arrMFIVE, colorBlack);
+    paintWord(arrMTEN, colorBlack);
+    paintWord(arrA, colorBlack);
+    paintWord(arrQUARTER, colorBlack);
+    paintWord(arrHALF, colorBlack);
+    paintWord(arrTWENTY, colorWhite);
   }
   if((minute()>44) && (minute()<50)) {
     strCurrentTime = "a quarter ";
-    A(colorWhite);
-    QUARTER(colorWhite); 
+    paintWord(arrMFIVE, colorBlack);
+    paintWord(arrMTEN, colorBlack);
+    paintWord(arrA, colorWhite);
+    paintWord(arrQUARTER, colorWhite);
+    paintWord(arrHALF, colorBlack);
+    paintWord(arrTWENTY, colorBlack);
   }
   if((minute()>49) && (minute()<55)){
     strCurrentTime = "ten ";
-    MTEN(colorWhite); 
+    paintWord(arrMFIVE, colorBlack);
+    paintWord(arrMTEN, colorWhite);
+    paintWord(arrA, colorBlack);
+    paintWord(arrQUARTER, colorBlack);
+    paintWord(arrHALF, colorBlack);
+    paintWord(arrTWENTY, colorBlack); 
   } 
   if(minute()>54){
     strCurrentTime = "five ";
-    MFIVE(colorWhite);
+    paintWord(arrMFIVE, colorWhite);
+    paintWord(arrMTEN, colorBlack);
+    paintWord(arrA, colorBlack);
+    paintWord(arrQUARTER, colorBlack);
+    paintWord(arrHALF, colorBlack);
+    paintWord(arrTWENTY, colorBlack);
   }
   if((minute() <5)){
     switch(hour()){
       case 1:
       case 13:
       strCurrentTime = strCurrentTime + "one ";
-      ONE(colorWhite);
+        paintWord(arrONE, colorWhite);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
       break;
     case 2:
     case 14:
       strCurrentTime = strCurrentTime + "two ";
-      TWO(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorWhite);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
       break;
     case 3: 
     case 15:
       strCurrentTime = strCurrentTime + "three ";
-      THREE(colorWhite);
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorWhite);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
       break;
     case 4: 
     case 16:
       strCurrentTime = strCurrentTime + "four ";
-      FOUR(colorWhite);
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorWhite);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
       break;
     case 5: 
     case 17:
       strCurrentTime = strCurrentTime + "five ";
-      FIVE(colorWhite);
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorWhite);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
       break;
     case 6: 
     case 18:
       strCurrentTime = strCurrentTime + "six ";
-      SIX(colorWhite);
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorWhite);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
       break;
     case 7: 
     case 19:
       strCurrentTime = strCurrentTime + "seven ";
-      SEVEN(colorWhite);
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorWhite);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
       break;
     case 8: 
     case 20:
       strCurrentTime = strCurrentTime + "eight ";
-      EIGHT(colorWhite);
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorWhite);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
       break;
     case 9: 
     case 21:
       strCurrentTime = strCurrentTime + "nine ";
-      NINE(colorWhite);
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorWhite);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
       break;
     case 10:
     case 22:
       strCurrentTime = strCurrentTime + "ten ";
-      TEN(colorWhite);
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorWhite);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
       break;
     case 11:
     case 23:
       strCurrentTime = strCurrentTime + "eleven ";
-      ELEVEN(colorWhite);
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorWhite);
+        paintWord(arrTWELVE, colorBlack);
       break;
     case 0:
     case 12: 
     case 24:
       strCurrentTime = strCurrentTime + "twelve ";
-      TWELVE(colorWhite);
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorWhite);
       break;
     }
     strCurrentTime = strCurrentTime + "oclock ";
-    OCLOCK(colorWhite);
+    paintWord(arrPAST, colorBlack);
+    paintWord(arrOCLOCK, colorWhite);
+    paintWord(arrTO, colorBlack);
   }else if((minute() < 35) && (minute() >4)){
     strCurrentTime = strCurrentTime + "past ";
-    PAST(colorWhite);
+    paintWord(arrPAST, colorWhite);
+    paintWord(arrOCLOCK, colorBlack);
+    paintWord(arrTO, colorBlack);
     switch (hour()) {
       case 1:
       case 13:
         strCurrentTime = strCurrentTime + "one ";
-        ONE(colorWhite);
+        paintWord(arrONE, colorWhite);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 2: 
       case 14:
         strCurrentTime = strCurrentTime + "two ";
-        TWO(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorWhite);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 3: 
       case 15:
         strCurrentTime = strCurrentTime + "three ";
-        THREE(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorWhite);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 4: 
       case 16:
         strCurrentTime = strCurrentTime + "four ";
-        FOUR(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorWhite);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 5: 
       case 17:
         strCurrentTime = strCurrentTime + "five ";
-        FIVE(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorWhite);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 6: 
       case 18:
         strCurrentTime = strCurrentTime + "six ";
-        SIX(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorWhite);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 7: 
       case 19:
         strCurrentTime = strCurrentTime + "seven ";
-        SEVEN(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorWhite);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 8: 
       case 20:
         strCurrentTime = strCurrentTime + "eight ";
-        EIGHT(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorWhite);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 9: 
       case 21:
         strCurrentTime = strCurrentTime + "nine ";
-        NINE(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorWhite);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 10:
       case 22:
         strCurrentTime = strCurrentTime + "ten ";
-        TEN(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorWhite);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 11:
       case 23:
         strCurrentTime = strCurrentTime + "eleven ";
-        ELEVEN(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorWhite);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 0:
       case 12:
       case 24:
         strCurrentTime = strCurrentTime + "twelve ";
-        TWELVE(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorWhite);
         break;
       }
     }else{
       // if we are greater than 34 minutes past the hour then display
       // the next hour, as we will be displaying a 'to' sign
       strCurrentTime = strCurrentTime + "to ";
-      TO(colorWhite);
+      paintWord(arrPAST, colorBlack);
+      paintWord(arrOCLOCK, colorBlack);
+      paintWord(arrTO, colorWhite);
       switch (hour()) {
         case 1: 
         case 13:
         strCurrentTime = strCurrentTime + "two ";
-        TWO(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorWhite);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 14:
       case 2:
         strCurrentTime = strCurrentTime + "three ";
-        THREE(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorWhite);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 15:
       case 3:
         strCurrentTime = strCurrentTime + "four ";
-        FOUR(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorWhite);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 4: 
       case 16:
         strCurrentTime = strCurrentTime + "five ";
-        FIVE(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorWhite);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 5: 
       case 17:
         strCurrentTime = strCurrentTime + "six ";
-        SIX(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorWhite);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 6: 
       case 18:
         strCurrentTime = strCurrentTime + "seven ";
-        SEVEN(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorWhite);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 7: 
       case 19:
         strCurrentTime = strCurrentTime + "eight ";
-        EIGHT(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorWhite);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 8: 
       case 20:
         strCurrentTime = strCurrentTime + "nine ";
-        NINE(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorWhite);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack); 
         break;
       case 9: 
       case 21:
         strCurrentTime = strCurrentTime + "ten ";
-        TEN(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorWhite);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack); 
         break;
       case 10: 
       case 22:
         strCurrentTime = strCurrentTime + "eleven ";
-        ELEVEN(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorWhite);
+        paintWord(arrTWELVE, colorBlack);
         break;
       case 11: 
       case 23:
         strCurrentTime = strCurrentTime + "twelve ";
-        TWELVE(colorWhite); 
+        paintWord(arrONE, colorBlack);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorWhite);
         break;
       case 0:
       case 12: 
       case 24:
         strCurrentTime = strCurrentTime + "one ";
-        ONE(colorWhite); 
+        paintWord(arrONE, colorWhite);
+        paintWord(arrTWO, colorBlack);
+        paintWord(arrTHREE, colorBlack);
+        paintWord(arrFOUR, colorBlack);
+        paintWord(arrFIVE, colorBlack);
+        paintWord(arrSIX, colorBlack);
+        paintWord(arrSEVEN, colorBlack);
+        paintWord(arrEIGHT, colorBlack);
+        paintWord(arrNINE, colorBlack);
+        paintWord(arrTEN, colorBlack);
+        paintWord(arrELEVEN, colorBlack);
+        paintWord(arrTWELVE, colorBlack);
         break;
     }
   }
+
   if(strCurrentTime != strTime){
+    digitalClockDisplay();
+    strTime = strCurrentTime;
+    if(strTime == ""){
+      fadeIn(20);
+    }
     // display our tagline
     if((minute()==0) | (minute()==30)){
-//      fadeOut(10);
-      colorWipe(colorBlack, 10);
+      fadeOut(20);
+      colorWipe(colorBlack, 0);
       grid.setBrightness(intBrightness);
       THEAGE();
       THECUSTOMER();
-      fadeOut(10);
+      fadeOut(20);
       colorWipe(colorBlack, 10);
-    //grid.setBrightness(intBrightness);
+      grid.setBrightness(intBrightness);
+      // print the version of code to the console
+      printVersion();
     }
-    strTime = strCurrentTime;
-//    fadeOut(100); // wont work because it calls show() which will show both current and new time at the same... time ha!
-    colorWipe(colorBlack, 10);
   }else{
 //    grid.show();
   }
 }
 
-void JAVELIN(uint32_t color){
-  Serial.println("JAVELIN ");
-  grid.setPixelColor(164,color); // J (top)
-  grid.setPixelColor(147,color); // J (bottom)
-  grid.setPixelColor(163,color); // A (top left)
-  grid.setPixelColor(162,color); // A (top right
-  grid.setPixelColor(148,color); // A (bottom left)
-  grid.setPixelColor(149,color); // A (bottom right)
-  grid.setPixelColor(161,color); // V (top)
-  grid.setPixelColor(150,color); // V (bottom)
-  grid.setPixelColor(160,color); // E (top left)
-  grid.setPixelColor(159,color); // E (top right)
-  grid.setPixelColor(151,color); // E (bottom left)
-  grid.setPixelColor(152,color); // E (bottom right)
-  grid.setPixelColor(158,color); // L (top)
-  grid.setPixelColor(153,color); // L (bottom)
-  // the I is part of the N
-  grid.setPixelColor(157,color); // N (top left)
-  grid.setPixelColor(156,color); // N (top right)
-  grid.setPixelColor(154,color); // N (bottom left)
-  grid.setPixelColor(155,color); // N (bottom right)
-}
-
-void THE1(uint32_t color){
-  Serial.println("the ");
-  grid.setPixelColor(65,color); // T
-  grid.setPixelColor(66,color); // H
-  grid.setPixelColor(67,color); // E
-}
-void AGE(uint32_t color){
-  Serial.println("age ");
-  grid.setPixelColor(69,color); // A
-  grid.setPixelColor(70,color); // G
-  grid.setPixelColor(71,color); // E
-}
-void NCY(uint32_t color){
-  Serial.println("ncy ");
-  grid.setPixelColor(72,color); // N
-  grid.setPixelColor(73,color); // C
-  grid.setPixelColor(74,color); // Y
-}
-void AGENCY(uint32_t color){
-  Serial.println("agency ");
-  grid.setPixelColor(69,color); // A
-  grid.setPixelColor(70,color); // G
-  grid.setPixelColor(71,color); // E
-  grid.setPixelColor(72,color); // N
-  grid.setPixelColor(73,color); // C
-  grid.setPixelColor(74,color); // Y
-}
-void OF(uint32_t color){
-  Serial.println("of ");
-  grid.setPixelColor(76,color); // O
-  grid.setPixelColor(77,color); // F
-}
-
-void THE2(uint32_t color){
-  Serial.println("the ");
-  grid.setPixelColor(40,color); // T
-  grid.setPixelColor(41,color); // H
-  grid.setPixelColor(42,color); // E
-}
-
-void TIME(uint32_t color){
-  Serial.println("time ");
-  grid.setPixelColor(168,color); // T
-  grid.setPixelColor(167,color); // I
-  grid.setPixelColor(166,color); // M
-  grid.setPixelColor(165,color); // E
-}
-
-void WE(uint32_t color){
-  Serial.println("we ");
-  grid.setPixelColor(143,color); // W
-  grid.setPixelColor(144,color); // E
-}
-void A(uint32_t color){
-  Serial.println("a ");
-  grid.setPixelColor(117,color); // W
-}
-void AT(uint32_t color){
-  Serial.println("at ");
-  grid.setPixelColor(145,color); // A
-  grid.setPixelColor(146,color); // T
-}
-
-void CUSTOMER(uint32_t color){
- Serial.println("customer ");
-  grid.setPixelColor(44,color); // C
-  grid.setPixelColor(45,color); // U
-  grid.setPixelColor(46,color); // S
-  grid.setPixelColor(47,color); // T
-  grid.setPixelColor(48,color); // O
-  grid.setPixelColor(49,color); // M
-  grid.setPixelColor(50,color); // U
-  grid.setPixelColor(51,color); // R
-}
-
-void HELLO_SPELL(uint32_t color){
-  Serial.println("HELLO ");
-  grid.setPixelColor(56,color); // H
-  grid.show();
-  delay(500);
-  grid.setPixelColor(55,color); // E
-  grid.show();
-  delay(500);
-  grid.setPixelColor(54,color); // L
-  grid.show();
-  delay(500);
-  grid.setPixelColor(53,color); // L
-  grid.show();
-  delay(500);
-  grid.setPixelColor(52,color); // O
-  grid.show();
-  delay(700);
-}
-void HELLO(uint32_t color){
-  Serial.println("HELLO ");
-  grid.setPixelColor(56,color); // H
-  grid.setPixelColor(55,color); // E
-  grid.setPixelColor(54,color); // L
-  grid.setPixelColor(53,color); // L
-  grid.setPixelColor(52,color); // O
-}
-void IT(uint32_t color){
-  Serial.println("it");
-  grid.setPixelColor(142,color); // I
-  grid.setPixelColor(141,color); // T
-}
-void IS(uint32_t color){
-  Serial.println("is ");
-  grid.setPixelColor(139,color); // I
-  grid.setPixelColor(138,color); // S
-}
-void QUARTER(uint32_t color){
-  Serial.println("quarter ");
-  grid.setPixelColor(119,color); // Q
-  grid.setPixelColor(120,color); // U
-  grid.setPixelColor(121,color); // A
-  grid.setPixelColor(122,color); // R
-  grid.setPixelColor(123,color); // T
-  grid.setPixelColor(124,color); // E
-  grid.setPixelColor(125,color); // R
-}
-void HALF(uint32_t color){
-  Serial.println("half ");
-  grid.setPixelColor(133,color); // H
-  grid.setPixelColor(132,color); // A
-  grid.setPixelColor(131,color); // L
-  grid.setPixelColor(130,color); // F
-}
-void PAST(uint32_t color){
-  Serial.println("past ");
-  grid.setPixelColor(91,color); // P
-  grid.setPixelColor(92,color); // A
-  grid.setPixelColor(93,color); // S
-  grid.setPixelColor(94,color); // T
-}
-void OCLOCK(uint32_t color){
-  Serial.println("oclock ");
-  grid.setPixelColor(5,color); // O
-  grid.setPixelColor(4,color); // C
-  grid.setPixelColor(3,color); // L
-  grid.setPixelColor(2,color); // O
-  grid.setPixelColor(1,color); // C
-  grid.setPixelColor(0,color); // K
-}
-void TO(uint32_t color){
-  Serial.println("to ");
-  grid.setPixelColor(95,color); // T
-  grid.setPixelColor(96,color); // O
-}
-void ONE(uint32_t color){
-  Serial.println("one ");
-  grid.setPixelColor(98,color); // O
-  grid.setPixelColor(99,color); // N
-  grid.setPixelColor(100,color); // E
-}
-void TWO(uint32_t color){
-  Serial.println("two ");
-  grid.setPixelColor(101,color); // T
-  grid.setPixelColor(102,color); // W
-  grid.setPixelColor(103,color); // O
-}
-void THREE(uint32_t color){
-  Serial.println("three ");
-  grid.setPixelColor(90,color); // T
-  grid.setPixelColor(89,color); // H
-  grid.setPixelColor(88,color); // R
-  grid.setPixelColor(87,color); // E
-  grid.setPixelColor(86,color); // E
-}
-void FOUR(uint32_t color){
-  Serial.println("four ");
-  grid.setPixelColor(85,color); // F
-  grid.setPixelColor(84,color); // O
-  grid.setPixelColor(83,color); // U
-  grid.setPixelColor(82,color); // R
-}
-void MFIVE(uint32_t color){
-  Serial.println("five ");
-  grid.setPixelColor(109,color); // F
-  grid.setPixelColor(108,color); // I
-  grid.setPixelColor(107,color); // V
-  grid.setPixelColor(106,color); // E
-}
-void FIVE(uint32_t color){
-  Serial.println("five ");
-  grid.setPixelColor(81,color); // F
-  grid.setPixelColor(80,color); // I
-  grid.setPixelColor(79,color); // V
-  grid.setPixelColor(78,color); // E
-}
-void SIX(uint32_t color){
-  Serial.println("six ");
-  grid.setPixelColor(38,color); // S
-  grid.setPixelColor(37,color); // I
-  grid.setPixelColor(36,color); // X
-}
-void SEVEN(uint32_t color){
-  Serial.println("seven ");
-  grid.setPixelColor(35,color); // S
-  grid.setPixelColor(34,color); // E
-  grid.setPixelColor(33,color); // V
-  grid.setPixelColor(32,color); // E
-  grid.setPixelColor(31,color); // N
-}
-void EIGHT(uint32_t color){
-  Serial.println("eight ");
-  grid.setPixelColor(30,color); // E
-  grid.setPixelColor(29,color); // I
-  grid.setPixelColor(28,color); // G
-  grid.setPixelColor(27,color); // H
-  grid.setPixelColor(26,color); // T
-}
-void NINE(uint32_t color){
-  Serial.println("nine ");
-  grid.setPixelColor(13,color); // N
-  grid.setPixelColor(14,color); // I
-  grid.setPixelColor(15,color); // N
-  grid.setPixelColor(16,color); // E
-}
-void TEN(uint32_t color){
-  Serial.println("ten ");
-  grid.setPixelColor(17,color); // T
-  grid.setPixelColor(18,color); // E
-  grid.setPixelColor(19,color); // N
-}
-void MTEN(uint32_t color){
-  Serial.println("m-ten ");
-  grid.setPixelColor(136,color); // T
-  grid.setPixelColor(135,color); // E
-  grid.setPixelColor(134,color); // N
-}
-void ELEVEN(uint32_t color){
-  Serial.println("eleven ");
-  grid.setPixelColor(20,color); // E
-  grid.setPixelColor(21,color); // L
-  grid.setPixelColor(22,color); // E
-  grid.setPixelColor(23,color); // V
-  grid.setPixelColor(24,color); // E
-  grid.setPixelColor(25,color); // N
-}
-static void TWELVE(uint32_t color){
-  Serial.println("twelve ");
-  grid.setPixelColor(12,color); // T
-  grid.setPixelColor(11,color); // W
-  grid.setPixelColor(10,color); // E
-  grid.setPixelColor(9,color); // L
-  grid.setPixelColor(8,color); // V
-  grid.setPixelColor(7,color); // E
-}
-static void TWENTY(uint32_t color){
-  Serial.println("twenty ");
-  grid.setPixelColor(116,color); // T
-  grid.setPixelColor(115,color); // W
-  grid.setPixelColor(114,color); // E
-  grid.setPixelColor(113,color); // N
-  grid.setPixelColor(112,color); // T
-  grid.setPixelColor(111,color); // Y
-}
 void THEAGE(){
-  THE1(colorWhite);
-  grid.show();
+//  paintWord(arrJAVELIN, colorBlack);
+  paintWord(arrTHE1, colorWhite);
   delay(1000);
-  AGE(colorWhite);
-  grid.show();
+  paintWord(arrAGE, colorWhite);
   delay(1000);
-  OF(colorWhite);
-  grid.show();
+  paintWord(arrOF, colorWhite);
   delay(1000);
-  THE2(colorWhite);
-  grid.show();
+  paintWord(arrTHE2, colorWhite);
   delay(1000);
-  CUSTOMER(colorWhite);
-  grid.show();
+  paintWord(arrCUSTOMER, colorWhite);
   delay(1000);
 }
+
 void THECUSTOMER(){
-  JAVELIN(colorJGreen);
-  grid.show();
-  delay(2000);
-  IS(colorWhite);
-  grid.show();
+  paintWord(arrJAVELIN, colorJGreen);
   delay(1000);
-  THE1(colorJGreen);
-  grid.show();
+  paintWord(arrIS, colorWhite);
   delay(1000);
-  AGENCY(colorJGreen);
-  grid.show();
+  paintWord(arrTHE1, colorJGreen);
   delay(1000);
-  OF(colorJGreen);
-  grid.show();
+  paintWord(arrAGENCY, colorJGreen);
   delay(1000);
-  THE2(colorJGreen);
-  grid.show();
+  paintWord(arrOF, colorJGreen);
   delay(1000);
-  CUSTOMER(colorJGreen);
-  grid.show();
+  paintWord(arrTHE2, colorJGreen);
+  delay(1000);
+  paintWord(arrCUSTOMER, colorJGreen);
   delay(1000);
 }
 
@@ -847,7 +1052,6 @@ static void chase(uint32_t color, uint8_t wait) {
       delay(wait);
   }
 }
-
 
 void fadeOut(int time){
   for (int i = intBrightness; i > 0; --i){
@@ -888,6 +1092,29 @@ uint32_t Wheel(byte WheelPos) {
   }
 }
 
+void paintWord(int arrWord[], uint32_t intColor){
+  for(int i = 0; i < grid.numPixels() + 1; i++){
+    if(arrWord[i] == -1){
+      grid.show();
+      break;
+    }else{
+      grid.setPixelColor(arrWord[i],intColor);
+    }
+  }
+}
+
+void spellWord(int arrWord[], uint32_t intColor){
+  for(int i = 0; i < grid.numPixels() + 1; i++){
+    if(arrWord[i] == -1){
+      break;
+    }else{
+      grid.setPixelColor(arrWord[i],intColor);
+      grid.show();
+      delay(500);
+    }
+  }
+}
+
 // print out the software version number
 void printVersion(void) {
   delay(2000);
@@ -919,11 +1146,11 @@ unsigned long processSyncMessage() {
 void test_grid(){
   printVersion();
   colorWipe(colorBlack, 0);
-  HELLO_SPELL(colorJGreen);
+  spellWord(arrHELLO, colorJGreen);
   delay(1000);
   fadeOut(50);
   grid.setBrightness(intBrightness);
-  HELLO(colorWhite);
+  paintWord(arrHELLO, colorWhite);
   delay(1000);
   fadeOut(50);
   grid.setBrightness(intBrightness);
@@ -933,130 +1160,130 @@ void test_grid(){
   chase(colorBlue,2); // Blue
   chase(colorWhite,2); // White
   colorWipe(colorBlack, 0);
-  TIME(colorWhite);
+  paintWord(arrTIME, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  WE(colorWhite);
+  paintWord(arrWE, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  AT(colorWhite);
+  paintWord(arrAT, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  IT(colorWhite);
+  paintWord(arrIT, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  IS(colorWhite);
+  paintWord(arrIS, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  HALF(colorWhite);
+  paintWord(arrHALF, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  A(colorWhite);
+  paintWord(arrA, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  QUARTER(colorWhite);
+  paintWord(arrQUARTER, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  PAST(colorWhite);
+  paintWord(arrPAST, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  OCLOCK(colorWhite);
+  paintWord(arrOCLOCK, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  TO(colorWhite);
+  paintWord(arrTO, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  ONE(colorWhite);
+  paintWord(arrONE, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  TWO(colorWhite);
+  paintWord(arrTWO, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  THREE(colorWhite);
+  paintWord(arrTHREE, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  FOUR(colorWhite);
+  paintWord(arrFOUR, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  MFIVE(colorWhite);
+  paintWord(arrMFIVE, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  FIVE(colorWhite);
+  paintWord(arrFIVE, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  SIX(colorWhite);
+  paintWord(arrSIX, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  SEVEN(colorWhite);
+  paintWord(arrSEVEN, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  EIGHT(colorWhite);
+  paintWord(arrEIGHT, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  NINE(colorWhite);
+  paintWord(arrNINE, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  MTEN(colorWhite);
+  paintWord(arrMTEN, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  TEN(colorWhite);
+  paintWord(arrTEN, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  ELEVEN(colorWhite);
+  paintWord(arrELEVEN, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  TWELVE(colorWhite);
+  paintWord(arrTWELVE, colorWhite);
   grid.show();
   delay(1000);
   colorWipe(colorBlack, 0);
-  TWENTY(colorWhite);
+  paintWord(arrTWENTY, colorWhite);
   grid.show();
   delay(1000);
 
   colorWipe(colorBlack, 0);
-  JAVELIN(colorJGreen);
+  paintWord(arrJAVELIN, colorJGreen);
   grid.show();
   delay(2000);
-  IS(colorWhite);
+  paintWord(arrIS, colorWhite);
   grid.show();
   delay(1000);
-  THE1(colorWhite);
+  paintWord(arrTHE1, colorWhite);
   grid.show();
   delay(1000);
-  AGENCY(colorWhite);
+  paintWord(arrAGENCY, colorWhite);
   grid.show();
   delay(1000);
-  OF(colorWhite);
+  paintWord(arrOF, colorWhite);
   grid.show();
   delay(1000);
-  THE2(colorWhite);
+  paintWord(arrTHE2, colorWhite);
   grid.show();
   delay(1000);
-  CUSTOMER(colorWhite);
+  paintWord(arrCUSTOMER, colorWhite);
   grid.show();
   delay(1000);
   fadeOut(100);
