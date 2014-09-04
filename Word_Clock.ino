@@ -8,7 +8,7 @@
  * RGB LEDs used: WS2812B LEDs on a 5v strip connected to pin 6
  *
  * To set the RTC for the first time you have to send a string consisting of
- * the letter T followed by ten digit time (as seconds since Jan 1 1970) Also known as EPIC time.
+ * the letter T followed by ten digit time (as seconds since Jan 1 1970) Also known as EPOCH time.
  *
  * You can send the text "T1357041600" on the next line using Serial Monitor to set the clock to noon Jan 1 2013  
  * Or you can use the following command via linux terminal to set the clock to the current time (UTC time zone)
